@@ -1,0 +1,124 @@
+---
+title: "Course Project - Practical Machine Learning"
+author: "Remi Wieten"
+date: "16 september 2016"
+output: html_document
+---
+
+# Introduction
+
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal was to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which these participants did certain exercises. Data was taken from the following website: <http://groupware.les.inf.puc-rio.br/har>.
+
+
+This report consist of five parts:  
+
+1. Download the data;  
+2. Loading, exploring and cleaning the data;  
+3. Building the model;  
+4. Determining the out of sample error;  
+5. Performing prediction on the test set.   
+
+
+For this project, R version 3.3.1 and R-studio version 0.99.903 were used on Windows 7 (64-bit). The following packages were used:
+
+```{r packages}
+library(caret, quietly = TRUE)                  ## Version 6.0-47
+library(randomForest)
+```
+  
+  
+The following pseudo-random seed was set:
+
+```{r seed}
+set.seed(9922)
+```
+
+The same seed should be used to ensure the same results are produced.  
+
+
+## 1. Download the data
+
+I downloaded the data to a directory on my desktop. The below code should be adjusted for it to work on your computer.
+
+```{r downloading}
+setwd("C:/Users/nlwiete1/Desktop/R Machine Learning/Course Project")
+
+trainURL <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(url = trainURL, destfile = "C:/Users/nlwiete1/Desktop/R Machine Learning/Course Project/pml-training.csv")
+
+testURL <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(url = testURL, destfile = "C:/Users/nlwiete1/Desktop/R Machine Learning/Course Project/pml-testing.csv")
+```
+
+## 2. Loading, exploring and cleaning the data
+
+By looking at the downloaded .csv files in Notepad++, we can see that the delimiter is a comma, that text is shown between quotation marks, and that "#DIV/0!" errors appear in the text. We would like to read these "#DIV/0!" errors (as well as empty fields, i.e. "") in as NA's.
+
+We load the data in R using the following script:
+
+```{r loading}
+pmlTraining <- read.csv(file = "C:/Users/nlwiete1/Desktop/R Machine Learning/Course Project/pml-training.csv", na.strings = c("NA", "#DIV/0!", ""))
+pmlTesting <- read.csv(file = "C:/Users/nlwiete1/Desktop/R Machine Learning/Course Project/pml-testing.csv", na.strings = c("NA", "#DIV/0!",""))
+```
+
+By looking at the data using the str() and summary() function, we can see that there are variables with some or only NA values. If we wish to use a random forest model, we need variables that do not have *any* NA values. We therefore need to exclude these variables.
+
+First, we define a function that can determine whether a column has any NA values:
+
+```{r cleaning1}
+cleanNA <- function(arg1) {!any(is.na(arg1))}
+```
+
+Then, use sapply to the pmlTraining set (and pmlTesting set) to only return those columns without NA values.
+
+```{r cleaning2}
+pmlTraining_NoNA <- pmlTraining[, sapply(X = pmlTraining, FUN = cleanNA)]
+pmlTesting_NoNA <- pmlTesting[, sapply(X = pmlTesting, FUN = cleanNA)]
+```
+
+The first 7 variables appear to be factor type variables that do not seem to contain information useful for the project. We will therefore remove those variables:
+
+```{r factor}
+pmlTraining_clean <- pmlTraining_NoNA[, -c(1:7)]
+pmlTesting_clean <- pmlTesting_NoNA[, -c(1:7)]
+```
+
+
+## 3. Building the model
+
+As the sample size appears to be large, we split the current training set (pmlTraining_clean) into a training set and a validation set:
+
+```{r validation}
+inTrain <- createDataPartition(pmlTraining_clean$classe, p=0.60, list=FALSE)
+pmlTraining_train <- pmlTraining_clean[inTrain, ] 
+pmlTraining_validation <- pmlTraining_clean[-inTrain, ]
+```
+
+As stated on the Coursera project page, the manner in which participants did the exercise is caught in the "classe" variable of the data.   
+We will now create a randomForest model to predict this variable:
+
+```{r model}
+randomForest <- randomForest(classe ~ ., data = pmlTraining_train, method = "class")
+```
+
+
+## 4. Determining the out of sample error;  
+
+Now we have our model, we would like to determine the out of sample error on our validation set.
+
+```{r error}
+confusionMatrix(predict(randomForest, pmlTraining_validation), pmlTraining_validation$classe)
+```
+
+The accuracy is 0.9935, thus the out of sample error is 1 - 0.9935 = 0.0065. This is equal to 0.65%.
+
+
+## 5. Performing prediction on the test set.
+
+As this is already high accuracy for a first model build, we will determine the results we obtain when predicting the results of the testing set:
+
+```{r prediction}
+predict(randomForest, pmlTesting_clean)
+```
+
+When entering these results into the Coursera Prediction Quiz, we obtain a 100% pass score. Therefore, the choice was made not to further refine the model.
