@@ -4,4 +4,4 @@ This repository contains the .Rmd and .html file describing the scripts that wer
 
 For this project, R-studio version 0.99.903 on Windows 7 (64-bit) was used.
 
-To view the .html file properly, download the repository from GitHub to your computer.
+To view the .html file (properly), download the repository from GitHub to your computer.
